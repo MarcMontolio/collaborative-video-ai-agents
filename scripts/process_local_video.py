@@ -34,35 +34,37 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+
+    if args.max_frames is not None and args.max_frames < 0:
+        raise ValueError("--max-frames must be greater than or equal to 0")
+
     source = parse_video_source(args.source)
-    
+
     video = LocalVideoCapture(source)
-    
+
     try:
         print(f"Video metadata: {video.metadata}")
-        
+
         processed_frames = 0
-        
+
         while True:
-            success, frame = video.read_frame()
-            
-            if not success:
-                break
-            
-            processed_frames += 1
-            frame_shape = frame.shape if frame is not None else None
-            
-            print(f"Processed frame {processed_frames}: shape={frame_shape}")
-            
             if args.max_frames is not None and processed_frames >= args.max_frames:
                 break
-        
-        print(f"Processed {processed_frames} frame(s)")
+
+            success, frame = video.read_frame()
+
+            if not success:
+                break
+
+            processed_frames += 1
+            frame_shape = frame.shape if frame is not None else None
+
+            print(f"Processed frame {processed_frames}: shape={frame_shape}")
+
+        print(f"Processed {processed_frames} frame(s).")
     finally:
         video.release()
         
         
 if __name__ == "__main__":
     main()
-    
-    
