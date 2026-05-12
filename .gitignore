@@ -212,3 +212,8 @@ __marimo__/
 # OS files
 .DS_Store
 Thumbs.db
+
+# AI model weights
+*.pt
+*.onnx
+*.engine
