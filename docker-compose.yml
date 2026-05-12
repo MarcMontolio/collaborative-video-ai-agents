@@ -1,0 +1,14 @@
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: apps/api_gateway/Dockerfile
+    container_name: collaborative-video-api-gateway
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+    command: uvicorn apps.api_gateway.main:app --host 0.0.0.0 --port 8000 --reload

@@ -48,3 +48,11 @@ line-ending = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apps*", "packages*"]
