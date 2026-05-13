@@ -1,6 +1,10 @@
 import argparse
+from pathlib import Path
+
+import cv2
 
 from packages.shared.detection.yolo import YoloDetector
+from packages.shared.video.annotation import draw_detections
 from packages.shared.video.capture import LocalVideoCapture
 
 
@@ -42,6 +46,18 @@ def parse_args() -> argparse.Namespace:
         help="Run detection every N frames.",
     )
 
+    parser.add_argument(
+        "--save-frames",
+        action="store_true",
+        help="Saves annotated frames with detections",
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        default="outputs/annotated_frames",
+        help="Directory where annotated frames are saved",
+    )
+
     return parser.parse_args()
 
 
@@ -58,6 +74,11 @@ def main() -> None:
 
     video = LocalVideoCapture(source)
     detector = YoloDetector(model_path=args.model)
+
+    output_dir = Path(args.output_dir)
+
+    if args.save_frames:
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         print(f"Video metadata: {video.metadata}")
@@ -80,6 +101,14 @@ def main() -> None:
                 continue
 
             detection_result = detector.detect(frame, frame_index=processed_frames)
+
+            if args.save_frames is True:
+                annotated_frame = draw_detections(frame, detection_result)
+
+                filename = f"frame_{processed_frames:06d}.jpg"
+                output_path = f"{output_dir}/{filename}"
+                cv2.imwrite(str(output_path), annotated_frame)
+
             detection_frames += 1
 
             print(
@@ -90,8 +119,7 @@ def main() -> None:
 
             for detection in detection_result.detections:
                 print(
-                    f"  - {detection.class_name} "
-                    f"confidence={detection.confidence:.2f}"
+                    f"  - {detection.class_name} confidence={detection.confidence:.2f}"
                 )
 
         print(f"Processed {processed_frames} frame(s).")
