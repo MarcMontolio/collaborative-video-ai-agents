@@ -19,9 +19,10 @@ def stream_local_detections(
         raise ValueError("--frame-step must be greater than or equal to 1")
 
     video = LocalVideoCapture(source)
-    detector = YoloDetector(model_path)
 
     try:
+        detector = YoloDetector(model_path)
+        
         processed_frames = 0
 
         while True:
