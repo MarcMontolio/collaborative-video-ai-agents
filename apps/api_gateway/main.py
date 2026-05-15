@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 
 from packages.shared.config import get_settings
+from packages.shared.detection.schemas import FrameDetectionResult
+from packages.shared.events.schemas import DetectionEvent
 
 
 def create_app() -> FastAPI:
@@ -16,6 +18,22 @@ def create_app() -> FastAPI:
             "status": "ok",
             "service": "api-gateway",
         }
+    
+    @app.websocket("/ws/detections")
+    async def detection_websocket(websocket: WebSocket) -> None:
+        await websocket.accept()
+        frame_detection_result_dummy = FrameDetectionResult(
+            frame_index=0,
+            detections=[],
+            processing_time_ms=0.0,
+        )
+        
+        detection_event_dummy = DetectionEvent(
+            detection_result=frame_detection_result_dummy
+        ).model_dump(mode="json")
+        
+        await websocket.send_json(detection_event_dummy)
+        await websocket.close()
         
     return app
 
