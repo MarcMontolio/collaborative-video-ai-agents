@@ -1,8 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from packages.shared.config import get_settings
-from packages.shared.detection.schemas import FrameDetectionResult
-from packages.shared.events.schemas import DetectionEvent
+from packages.shared.streaming.local import stream_local_detections
 
 
 def create_app() -> FastAPI:
@@ -21,20 +20,25 @@ def create_app() -> FastAPI:
         }
 
     @app.websocket("/ws/detections")
-    async def detection_websocket(websocket: WebSocket) -> None:
+    async def detection_websocket(
+        websocket: WebSocket,
+        source: str = "0",
+        model_path: str = "yolo11n.pt",
+        frame_step: int = 5,
+        max_frames: int | None = 20,
+    ) -> None:
         await websocket.accept()
-        frame_detection_result_dummy = FrameDetectionResult(
-            frame_index=0,
-            detections=[],
-            processing_time_ms=0.0,
-        )
 
-        detection_event_dummy = DetectionEvent(
-            detection_result=frame_detection_result_dummy
-        ).model_dump(mode="json")
+        video_source= int(source) if source.isdigit() else source
 
         try:
-            await websocket.send_json(detection_event_dummy)
+            for event in stream_local_detections(
+                source=video_source,
+                model_path=model_path,
+                frame_step=frame_step,
+                max_frames=max_frames,
+            ):
+                await websocket.send_json(event.model_dump(mode="json"))
             await websocket.close()
         except WebSocketDisconnect:
             pass
