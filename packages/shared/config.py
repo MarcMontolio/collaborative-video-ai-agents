@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api/v1"
     log_level: str = "INFO"
+    
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
 
 
 @lru_cache
