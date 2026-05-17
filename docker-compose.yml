@@ -4,8 +4,6 @@ services:
       context: .
       dockerfile: apps/api_gateway/Dockerfile
     container_name: collaborative-video-api-gateway
-    env_file:
-      - .env
     ports:
       - "8000:8000"
     volumes:

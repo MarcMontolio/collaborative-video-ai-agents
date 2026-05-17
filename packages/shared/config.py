@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Collaborative Video AI Agents"
     app_env: str = "local"
-    debug: bool = True
+    debug: bool = False
     api_prefix: str = "/api/v1"
     log_level: str = "INFO"
 
