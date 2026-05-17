@@ -89,7 +89,7 @@ The first implementation starts with a small FastAPI-based foundation and will p
 
 ## Current Project Status
 
-The project is currently in its foundation stage.
+The project currently has a functional local video processing pipeline and a basic real-time WebSocket streaming API.
 
 Implemented:
 
@@ -99,16 +99,23 @@ Implemented:
 - Docker Compose setup for local API execution
 - Python project tooling with Ruff and pytest
 - Editable local installation through pip
+- Local video capture from webcam or video files
+- YOLO-based frame inference
+- Structured detection result schemas
+- Optional annotated frame output
+- Detection event schemas for real-time messaging
+- WebSocket endpoint for detection event streaming
+- Local WebSocket debug client
+- Basic automated tests for API, video, detection and streaming components
 
 Planned next:
 
-- Local video processing with OpenCV
-- YOLO-based detection
-- WebSocket streaming
 - Redis Streams event pipeline
 - Multi-agent pipeline
 - Real-time dashboard
-- Observability and metrics
+- Tracking and activity recognition agents
+- Alerting workflow
+- Observability, metrics and structured logging
 
 ## Local Development
 
@@ -179,6 +186,64 @@ Expected response:
 }
 ```
 
+## Real-time detection streaming
+
+The API gateway exposes a WebSocket endpoint for streaming detection events generated from a local video source or webcam.
+
+The endpoint is intended for local development and debugging before the project introduces a frontend dashboard or a distributed event-driven pipeline.
+
+### WebSocket endpoint
+
+```text
+ws://127.0.0.1:8000/ws/detections
+```
+
+The endpoint accepts the following query parameters:
+
+- `source`: webcam index or local video path. Default: `0`.
+- `model_path`: YOLO model path or model name. Default: `yolo11n.pt`.
+- `frame_step`: process every N frames. Default: `5`.
+- `max_frames`: optional frame limit. Default: unlimited.
+
+Example:
+
+```text
+ws://127.0.0.1:8000/ws/detections?source=0&model_path=yolo11n.pt&frame_step=5&max_frames=20
+```
+
+### Debug WebSocket client
+
+A lightweight debug client is available for testing the detection WebSocket endpoint without a frontend dashboard.
+
+Start the API first:
+
+```powershell
+uvicorn apps.api_gateway.main:app --reload
+```
+
+Then run the debug client:
+
+```powershell
+python scripts\debug_websocket_client.py --url "ws://127.0.0.1:8000/ws/detections?source=0&model_path=yolo11n.pt&frame_step=5&max_frames=20"
+```
+
+The client connects to the WebSocket endpoint and prints received detection events to the console.
+
+If the API is not running or cannot be reached, the client prints a clear connection error message.
+
+### Current limitations
+
+The current WebSocket streaming implementation is intended for local development and debugging.
+
+Known limitations:
+
+- Detection runs locally in the API process.
+- Only local webcam indexes or local video file paths are supported.
+- Detection events are streamed as JSON, but annotated frames are not streamed.
+- The current implementation does not use Redis Streams yet.
+- Multi-agent orchestration is not implemented yet.
+- The WebSocket endpoint does not include authentication or production-grade access control yet.
+
 ## Testing and Linting
 
 Run tests:
@@ -212,12 +277,16 @@ ruff check .
 - Extract frames with OpenCV
 - Run YOLO inference
 - Produce structured detection results
+- Save optional annotated frames
+- Add basic tests for video and detection components
 
 ### Milestone 3: Real-time API and WebSocket streaming
 
+- Detection event schemas
 - WebSocket endpoint
 - Live detection result streaming
-- Basic debug client or viewer
+- Basic debug client
+- Real-time streaming usage documentation
 
 ### Milestone 4: Event-driven multi-agent pipeline
 
@@ -249,6 +318,10 @@ apps/
   api_gateway/
 packages/
   shared/
+    detection/
+    events/
+    streaming/
+    video/
 tests/
 docs/
 scripts/
