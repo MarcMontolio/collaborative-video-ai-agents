@@ -30,7 +30,7 @@ def main() -> None:
     try:
         args = parse_args()
         asyncio.run(run_client(args.url))
-    except ConnectionRefusedError:
+    except OSError:
         print("Cannot connect to the server. Please check if the API is running.")
     
     
