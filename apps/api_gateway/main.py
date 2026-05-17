@@ -1,7 +1,17 @@
+import asyncio
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from packages.shared.config import get_settings
 from packages.shared.streaming.local import stream_local_detections
+
+
+def get_next_stream_event(iterator):
+    try:
+        return next(iterator)
+    except StopIteration:
+        return None
+    
 
 
 def create_app() -> FastAPI:
@@ -25,20 +35,28 @@ def create_app() -> FastAPI:
         source: str = "0",
         model_path: str = "yolo11n.pt",
         frame_step: int = 5,
-        max_frames: int | None = 20,
+        max_frames: int | None = None,
     ) -> None:
         await websocket.accept()
 
-        video_source= int(source) if source.isdigit() else source
+        video_source = int(source) if source.isdigit() else source
 
+        iterator = stream_local_detections(
+            source=video_source,
+            model_path=model_path,
+            frame_step=frame_step,
+            max_frames=max_frames
+        )
+        
         try:
-            for event in stream_local_detections(
-                source=video_source,
-                model_path=model_path,
-                frame_step=frame_step,
-                max_frames=max_frames,
-            ):
+            while True:
+                event = await asyncio.to_thread(get_next_stream_event, iterator)
+                
+                if event is None:
+                    break
+                
                 await websocket.send_json(event.model_dump(mode="json"))
+                
             await websocket.close()
         except WebSocketDisconnect:
             pass
