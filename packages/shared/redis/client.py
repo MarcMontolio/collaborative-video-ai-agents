@@ -1,6 +1,5 @@
-from redis import Redis
-
 from packages.shared.config import get_settings
+from redis import Redis
 
 
 def get_redis_client() -> Redis:
