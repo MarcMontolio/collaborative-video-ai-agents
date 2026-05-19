@@ -65,9 +65,9 @@ def main() -> None:
         frame_step=args.frame_step,
         max_frames=args.max_frames,
     )
-    message_ids = publish_detection_events(client, events)
+    published_count = publish_detection_events(client, events)
 
-    print(f"Published {len(message_ids)} detection event(s) to Redis Streams.")
+    print(f"Published {published_count} detection event(s) to Redis Streams.")
 
 
 if __name__ == "__main__":

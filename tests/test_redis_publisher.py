@@ -44,7 +44,7 @@ def test_redis_publisher_with_mock_client() -> None:
     assert isinstance(dummy_client.message["payload"], str)
 
 
-def test_publish_detection_events_returns_message_ids() -> None:
+def test_publish_detection_events_returns_published_count() -> None:
     class DummyRedisClient:
         def __init__(self) -> None:
             self.calls = []
@@ -81,11 +81,11 @@ def test_publish_detection_events_returns_message_ids() -> None:
 
     dummy_client = DummyRedisClient()
 
-    message_ids = publish_detection_events(
+    published_count = publish_detection_events(
         dummy_client, [dummy_detection_event_1, dummy_detection_event_2]
     )
 
-    assert message_ids == ["1-0", "2-0"]
+    assert published_count == 2
     assert len(dummy_client.calls) == 2
     assert dummy_client.calls[0]["stream_name"] == DETECTION_EVENT_STREAM
     assert dummy_client.calls[1]["stream_name"] == DETECTION_EVENT_STREAM
