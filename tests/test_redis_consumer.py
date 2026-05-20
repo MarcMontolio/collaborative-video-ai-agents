@@ -69,13 +69,13 @@ def test_read_detection_stream_messages_returns_detection_events() -> None:
 
     dummy_client = DummyRedisClient()
 
-    events = read_detection_stream_messages(dummy_client)
+    consumed_events = read_detection_stream_messages(dummy_client)
 
     assert dummy_client.streams == {DETECTION_EVENT_STREAM: "0"}
     assert dummy_client.count == 10
     assert dummy_client.block is None
 
-    assert len(events) == 1
-    assert isinstance(events[0], DetectionEvent)
-    assert events[0].event_type == "detection.frame.processed"
-    assert events[0].detection_result.frame_index == 1
+    assert len(consumed_events) == 1
+    assert isinstance(consumed_events[0].event, DetectionEvent)
+    assert consumed_events[0].event.event_type == "detection.frame.processed"
+    assert consumed_events[0].event.detection_result.frame_index == 1

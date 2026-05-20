@@ -1,6 +1,13 @@
+from pydantic import BaseModel
+
 from packages.shared.events.schemas import DetectionEvent
 from packages.shared.redis.streams import DETECTION_EVENT_STREAM
 from redis import Redis
+
+
+class ConsumedDetectionEvent(BaseModel):
+    message_id: str
+    event: DetectionEvent
 
 
 def parse_detection_stream_message(message: dict) -> DetectionEvent:
@@ -14,8 +21,8 @@ def read_detection_stream_messages(
     last_id: str = "0",
     count: int = 10,
     block_ms: int | None = None,
-) -> list[DetectionEvent]:
-    events_list = []
+) -> list[ConsumedDetectionEvent]:
+    consumed_events = []
 
     stream_entries = client.xread(
         streams={DETECTION_EVENT_STREAM: last_id},
@@ -24,8 +31,13 @@ def read_detection_stream_messages(
     )
 
     for _stream_name, messages in stream_entries:
-        for _message_id, message in messages:
+        for message_id, message in messages:
             parsed_event = parse_detection_stream_message(message)
-            events_list.append(parsed_event)
+            consumed_events.append(
+                ConsumedDetectionEvent(
+                    message_id=message_id,
+                    event=parsed_event,
+                )
+            )
 
-    return events_list
+    return consumed_events

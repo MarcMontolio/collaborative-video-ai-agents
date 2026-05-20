@@ -37,17 +37,17 @@ def main() -> None:
 
     client = get_redis_client()
 
-    events = read_detection_stream_messages(
+    consumed_events = read_detection_stream_messages(
         client=client,
         last_id=args.last_id,
         count=args.count,
         block_ms=args.block_ms,
     )
 
-    print(f"Consumed {len(events)} detection event(s) from Redis Streams.")
+    print(f"Consumed {len(consumed_events)} detection event(s) from Redis Streams.")
 
-    for event in events:
-        processing_time_ms = event.detection_result.processing_time_ms
+    for consumed_event in consumed_events:
+        processing_time_ms = consumed_event.event.detection_result.processing_time_ms
 
         if processing_time_ms is None:
             processing_time = "unknown"
@@ -55,8 +55,9 @@ def main() -> None:
             processing_time = f"{processing_time_ms:.2f}"
 
         print(
-            f"Frame {event.detection_result.frame_index}:",
-            f"detections={len(event.detection_result.detections)}",
+            f"Message {consumed_event.message_id}",
+            f"Frame {consumed_event.event.detection_result.frame_index}:",
+            f"detections={len(consumed_event.event.detection_result.detections)}",
             f"processing_time_ms={processing_time}",
         )
 
