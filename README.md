@@ -282,6 +282,10 @@ AlertEvent
 Redis Stream: alert-events
 ```
 
+The detection publishing and detection consuming steps can be run locally with the scripts below.
+
+The coordinator and alert publisher are implemented as shared modules, but the full alert publishing flow is not yet wired into a dedicated runnable worker script.
+
 ### Redis Streams
 
 The project currently uses the following Redis Streams:
@@ -292,7 +296,7 @@ alert-events
 ```
 
 `detection-events` stores detection events generated from local video processing.
-`alert-events` stores alert events generated from detection summaries.
+`alert-events` is reserved for alert events generated from detection summaries. The alert schema and publisher exist in code, but the documented local scripts do not yet run the full detection-summary-to-alert publishing flow.
 
 ### Running Redis locally
 
@@ -351,8 +355,8 @@ Known limitations:
 - Redis Streams are used without consumer groups for now.
 - Detection publishing currently runs from a local script.
 - The consumer worker is a local debugging worker, not a long-running production service.
-- Alert generation uses a simple rule based on detection summaries.
-- Advanced alert rules, tracking and activity recognition are not implemented yet.
+- Alert generation currently uses a simple rule based on detection summaries.- Advanced alert rules, tracking and activity recognition are not implemented yet.
+- Alert schemas and publishing helpers exist, but alert publishing is not yet wired into a runnable worker script.
 - Backpressure, retries and dead-letter handling are not implemented yet.
 
 ## Testing and Linting
