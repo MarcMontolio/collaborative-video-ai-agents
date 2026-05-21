@@ -89,14 +89,14 @@ The first implementation starts with a small FastAPI-based foundation and will p
 
 ## Current Project Status
 
-The project currently has a functional local video processing pipeline and a basic real-time WebSocket streaming API.
+The project currently has a functional local video processing pipeline, a real-time WebSocket streaming API and an initial Redis Streams event-driven pipeline.
 
 Implemented:
 
 - Initial FastAPI API gateway
 - Health check endpoint
 - Shared configuration module using Pydantic Settings
-- Docker Compose setup for local API execution
+- Docker Compose setup for local API and Redis execution
 - Python project tooling with Ruff and pytest
 - Editable local installation through pip
 - Local video capture from webcam or video files
@@ -106,15 +106,20 @@ Implemented:
 - Detection event schemas for real-time messaging
 - WebSocket endpoint for detection event streaming
 - Local WebSocket debug client
-- Basic automated tests for API, video, detection and streaming components
+- Redis client configuration
+- Redis Streams publisher for detection events
+- Redis Streams consumer for detection events
+- Detection event coordinator and summary generation
+- Alert event schema and simple alert publisher
+- Basic automated tests for API, video, detection, streaming, Redis, coordinator and alert components
 
 Planned next:
 
-- Redis Streams event pipeline
-- Multi-agent pipeline
+Planned next:
+
 - Real-time dashboard
 - Tracking and activity recognition agents
-- Alerting workflow
+- More advanced alerting rules
 - Observability, metrics and structured logging
 
 ## Local Development
@@ -159,7 +164,7 @@ Expected response:
 
 ## Running with Docker Compose
 
-Create a local environment file:
+Optionally, create a local environment file:
 
 ```powershell
 Copy-Item .env.example .env
@@ -237,12 +242,118 @@ The current WebSocket streaming implementation is intended for local development
 
 Known limitations:
 
-- Detection runs locally in the API process.
+- Detection runs locally in the API process for the WebSocket endpoint.
 - Only local webcam indexes or local video file paths are supported.
 - Detection events are streamed as JSON, but annotated frames are not streamed.
-- The current implementation does not use Redis Streams yet.
-- Multi-agent orchestration is not implemented yet.
+- The WebSocket endpoint is separate from the Redis Streams pipeline for now.
+- Multi-agent orchestration is still limited to local modules and scripts.
 - The WebSocket endpoint does not include authentication or production-grade access control yet.
+
+## Event-driven Redis Streams pipeline
+
+The project includes an initial Redis Streams pipeline for moving detection events between independent components.
+
+This pipeline is intended to prepare the project for a future multi-agent architecture where ingestion, detection, coordination and alerting can run as separate services or workers.
+
+### Pipeline flow
+
+```text
+Local video source
+    |
+    v
+YOLO detection stream
+    |
+    v
+DetectionEvent
+    |
+    v
+Redis Stream: detection-events
+    |
+    v
+Detection consumer worker
+    |
+    v
+DetectionSummary
+    |
+    v
+AlertEvent
+    |
+    v
+Redis Stream: alert-events
+```
+
+### Redis Streams
+
+The project currently uses the following Redis Streams:
+
+```text
+detection-events
+alert-events
+```
+
+`detection-events` stores detection events generated from local video processing.
+`alert-events` stores alert events generated from detection summaries.
+
+### Running Redis locally
+
+Start Redis with Docker Compose:
+
+```powershell
+docker compose up redis
+```
+
+To start the full local stack:
+
+```powershell
+docker compose up --build
+```
+
+### Publishing detection events to Redis
+
+Start Redis first, then publish detection events from a local video source or webcam:
+
+```powershell
+python scripts\publish_detection_events.py --source 0 --model yolo11n.pt --frame-step 5 --max-frames 20
+```
+
+The script runs local detection processing and publishes generated detection events to the `detection-events` Redis Stream.
+
+### Consuming detection events from Redis
+
+After publishing detection events, consume them with:
+
+```powershell
+python scripts\consume_detection_events.py --last-id 0 --count 10
+```
+
+The consumer reads detection events from Redis, parses them back into structured `DetectionEvent` objects and prints a short summary for each event.
+
+### Inspecting Redis Streams manually
+
+You can inspect detection events with:
+
+```powershell
+docker exec -it collaborative-video-redis redis-cli XRANGE detection-events - +
+```
+
+You can inspect alert events with:
+
+```powershell
+docker exec -it collaborative-video-redis redis-cli XRANGE alert-events - +
+```
+
+### Current limitations
+
+The current Redis Streams pipeline is intended for local development and architecture validation.
+
+Known limitations:
+
+- Redis Streams are used without consumer groups for now.
+- Detection publishing currently runs from a local script.
+- The consumer worker is a local debugging worker, not a long-running production service.
+- Alert generation uses a simple rule based on detection summaries.
+- Advanced alert rules, tracking and activity recognition are not implemented yet.
+- Backpressure, retries and dead-letter handling are not implemented yet.
 
 ## Testing and Linting
 
@@ -291,10 +402,13 @@ ruff check .
 ### Milestone 4: Event-driven multi-agent pipeline
 
 - Redis Streams integration
-- Video ingestion service
-- Detection workers
+- Redis client configuration
+- Detection event publisher
+- Detection stream consumer worker
 - Coordinator agent
-- Alert agent
+- Alert event schema
+- Simple alert publisher
+- Event-driven pipeline documentation
 
 ### Milestone 5: Dashboard and real-time visualisation
 
@@ -318,8 +432,11 @@ apps/
   api_gateway/
 packages/
   shared/
+    alerts/
+    coordinator/
     detection/
     events/
+    redis/
     streaming/
     video/
 tests/
