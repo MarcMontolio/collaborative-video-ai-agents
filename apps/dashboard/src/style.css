@@ -1,0 +1,79 @@
+:root {
+  font-family:
+    Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #f8fafc;
+  background: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.dashboard {
+  min-height: 100vh;
+  padding: 4rem;
+}
+
+.hero {
+  max-width: 760px;
+  margin-bottom: 3rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: #38bdf8;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  line-height: 1;
+}
+
+.description {
+  max-width: 640px;
+  color: #cbd5e1;
+  font-size: 1.125rem;
+  line-height: 1.7;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  min-height: 180px;
+  padding: 1.5rem;
+  border: 1px solid #1e293b;
+  border-radius: 1rem;
+  background: #111827;
+}
+
+.card h2 {
+  margin: 0 0 0.75rem;
+}
+
+.card p {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
