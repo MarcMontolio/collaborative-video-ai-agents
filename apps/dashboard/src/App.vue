@@ -9,7 +9,7 @@ const websocketUrl = ref(
   'ws://127.0.0.1:8000/ws/detections?source=0&model_path=yolo11n.pt&frame_step=5&max_frames=200',
 )
 const connectionStatus = ref<'disconnected' | 'connecting' | 'connected' | 'error'>(
-  'disconnected'
+  'disconnected',
 )
 const receivedEvents = ref<DetectionEvent[]>([])
 let socket: WebSocket | null = null
@@ -21,21 +21,39 @@ function connectToDetectionStream() {
 
   connectionStatus.value = 'connecting'
 
-  socket = createDetectionWebSocket(websocketUrl.value, {
+  const currentSocket = createDetectionWebSocket(websocketUrl.value, {
     onOpen: () => {
+      if (socket !== currentSocket) {
+        return
+      }
+
       connectionStatus.value = 'connected'
     },
     onMessage: (event) => {
+      if (socket !== currentSocket) {
+        return
+      }
+
       receivedEvents.value = [event, ...receivedEvents.value].slice(0, 10)
     },
     onError: () => {
+      if (socket !== currentSocket) {
+        return
+      }
+
       connectionStatus.value = 'error'
     },
     onClose: () => {
+      if (socket !== currentSocket) {
+        return
+      }
+
       connectionStatus.value = 'disconnected'
       socket = null
     },
   })
+
+  socket = currentSocket
 }
 
 function disconnectFromDetectionStream() {
