@@ -91,7 +91,7 @@ function disconnectFromDetectionStream() {
 
           <p class="status">Status: {{ connectionStatus }}</p>
           <p class="status">Received events: {{ receivedEvents.length }}</p>
-          <div class="event-lis">
+          <div class="event-list">
             <article
             v-for="event in receivedEvents"
             :key="`${event.timestamp}-${event.detection_result.frame_index}`"
