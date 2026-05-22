@@ -77,3 +77,49 @@ h1 {
   color: #cbd5e1;
   line-height: 1.6;
 }
+
+.connection-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.connection-panel label {
+  color: #cbd5e1;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.connection-panel input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #334155;
+  border-radius: 0.75rem;
+  color: #f8fafc;
+  background: #020617;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.actions button {
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 0.75rem;
+  color: #020617;
+  background: #38bdf8;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.actions button:hover {
+  background: #7dd3fc;
+}
+
+.status {
+  margin: 0;
+  color: #cbd5e1;
+}
