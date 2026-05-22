@@ -91,6 +91,46 @@ function disconnectFromDetectionStream() {
 
           <p class="status">Status: {{ connectionStatus }}</p>
           <p class="status">Received events: {{ receivedEvents.length }}</p>
+          <div class="event-list">
+            <article
+            v-for="event in receivedEvents"
+            :key="`${event.timestamp}-${event.detection_result.frame_index}`"
+            class="event-item"
+            >
+              <div class="event-header">
+                <strong>Frame {{ event.detection_result.frame_index}}</strong>
+                <span>{{ event.detection_result.detections.length }} detections(s)</span>
+              </div>
+
+              <p class="event-meta">
+                Source: {{ event.source ?? 'unknown' }}
+              </p>
+
+              <p class="event-meta">
+                Processing time:
+                {{ 
+                  event.detection_result.processing_time_ms === null
+                  ? 'unknown'
+                  : `${event.detection_result.processing_time_ms.toFixed(2)} ms`
+                }}
+              </p>
+
+              <ul
+                v-if="event.detection_result.detections.length > 0"
+                class="detection-list"
+              >
+                <li
+                  v-for="detection in event.detection_result.detections"
+                  :key="`${detection.class_name}-${detection.confidence}-${detection.bounding_box.x1}-${detection.bounding_box.y1}`"
+                >
+                  {{ detection.class_name }}
+                  <span>{{ (detection.confidence * 100).toFixed(1) }}%</span>
+                </li>
+              </ul>
+
+              <p v-else class="event-meta">No detections in this frame</p>
+            </article>
+          </div>
         </div>
       </article>
 
