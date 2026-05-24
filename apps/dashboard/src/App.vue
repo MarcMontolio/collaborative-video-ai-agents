@@ -1,13 +1,31 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { createDetectionWebSocket } from './services/detectionWebSocket'
 import type { DetectionEvent } from './types/detection'
 
 const projectName = 'Collaborative Real-Time Video Analysis'
-const websocketUrl = ref(
-  'ws://127.0.0.1:8000/ws/detections?source=0&model_path=yolo11n.pt&frame_step=5&max_frames=200',
-)
+
+const source = ref('0')
+const modelPath = ref('yolo11n.pt')
+const frameStep = ref(5)
+const maxFrames = ref<number | null>(20)
+const websocketBaseUrl = 'ws://127.0.0.1:8000/ws/detections'
+
+const websocketUrl = computed (() => {
+  const params = new URLSearchParams({
+    source: source.value,
+    model_path: modelPath.value,
+    frame_step: frameStep.value.toString(),
+  })
+
+  if (maxFrames.value !== null) {
+    params.set('max_frames', maxFrames.value.toString())
+  }
+
+  return `${websocketBaseUrl}?${params.toString()}`
+})
+
 const connectionStatus = ref<'disconnected' | 'connecting' | 'connected' | 'error'>(
   'disconnected',
 )
@@ -15,6 +33,16 @@ const receivedEvents = ref<DetectionEvent[]>([])
 let socket: WebSocket | null = null
 
 function connectToDetectionStream() {
+  if (frameStep.value < 1) {
+    connectionStatus.value = 'error'
+    return
+  }
+
+  if (maxFrames.value !== null && maxFrames.value < 0) {
+    connectionStatus.value = 'error'
+    return
+  }
+
   if (socket !== null) {
     socket.close()
   }
@@ -79,8 +107,32 @@ function disconnectFromDetectionStream() {
         <p>Connect to the backend WebSocket endpoint and receive detection events.</p>
 
         <div class="connection-panel">
-          <label for="websocket-url">WebSocket URL</label>
-          <input id="websocket-url" v-model="websocketUrl" type="text" />
+          <div class="control-grid">
+            <label>
+              Source
+              <input v-model="source" type="text" />
+            </label>
+
+            <label>
+              Model path
+              <input v-model="modelPath" type="text" />
+            </label>
+
+            <label>
+              Frame step
+              <input v-model="frameStep" type="text" />
+            </label>
+
+            <label>
+              Max frames
+              <input v-model="maxFrames" type="text" />
+            </label>
+          </div>
+
+          <div class="websocket-preview">
+            <span>WebSocket URL</span>
+            <code>{{ websocketUrl }}</code>
+          </div>
 
           <div class="actions">
             <button type="button" @click="connectToDetectionStream">Connect</button>
