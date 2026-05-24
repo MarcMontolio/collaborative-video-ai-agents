@@ -32,17 +32,7 @@ const connectionStatus = ref<
 >("disconnected");
 const receivedEvents = ref<DetectionEvent[]>([]);
 
-const alerts = ref<AlertEvent[]>([
-  {
-    event_type: "alert.detection.generated",
-    timestamp: new Date().toISOString(),
-    severity: "info",
-    message: "Detected 2 object(s)",
-    source: "demo-source",
-    frame_index: 1,
-    detected_classes: ["person", "car"],
-  },
-]);
+const alerts = ref<AlertEvent[]>([]);
 
 let socket: WebSocket | null = null;
 
