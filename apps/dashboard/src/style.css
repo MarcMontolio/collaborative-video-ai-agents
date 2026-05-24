@@ -273,3 +273,15 @@ h1 {
   margin-top: 1rem;
   color: #94a3b8;
 }
+
+.status-summary {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.status-summary p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
