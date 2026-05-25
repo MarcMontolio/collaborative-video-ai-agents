@@ -200,11 +200,38 @@ function disconnectFromDetectionStream() {
       </article>
 
       <article class="card">
-        <h2>Stream Status</h2>
-        <p>
-          Connection state and stream controls will be expanded in future
-          issues.
-        </p>
+        <h2>Live Summary</h2>
+        <p>Latest information received from the detection stream.</p>
+
+        <div class="status-summary">
+          <p>Status: {{ connectionStatus }}</p>
+          <p>Recent events kept: {{ receivedEvents.length }}</p>
+          <p>
+            Latest frame:
+            {{
+              receivedEvents.length > 0
+                ? receivedEvents[0].detection_result.frame_index
+                : "none"
+            }}
+          </p>
+          <p>
+            Latest detections:
+            {{
+              receivedEvents.length > 0
+                ? receivedEvents[0].detection_result.detections.length
+                : 0
+            }}
+          </p>
+          <p>
+            Latest processing time:
+            {{
+              receivedEvents.length > 0 &&
+              receivedEvents[0].detection_result.processing_time_ms !== null
+                ? `${receivedEvents[0].detection_result.processing_time_ms.toFixed(2)} ms`
+                : "unknown"
+            }}
+          </p>
+        </div>
       </article>
 
       <article class="card">
