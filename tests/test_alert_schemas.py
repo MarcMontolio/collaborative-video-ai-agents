@@ -47,7 +47,7 @@ def test_create_alert_from_detection_summary_returns_alert_event() -> None:
     assert isinstance(alert, AlertEvent)
     assert alert.event_type == "alert.detection.generated"
     assert alert.severity == "info"
-    assert alert.message == "Detected 2 object(s)"
+    assert alert.message == "Person detected in frame 1"
     assert alert.source == "dummy.mp4"
     assert alert.frame_index == 1
     assert alert.detected_classes == ["person", "car"]
@@ -64,4 +64,18 @@ def test_create_alert_from_detection_summary_returns_none_without_detections() -
 
     alert = create_alert_from_detection_summary(summary)
 
+    assert alert is None
+
+
+def test_create_alert_from_detection_summary_returns_none_without_person() -> None:
+    summary = DetectionSummary(
+        frame_index=1,
+        source="dummy.mp4",
+        total_detections=2,
+        detected_classes=["car", "kite"],
+        highest_confidence=0.95
+    )
+    
+    alert = create_alert_from_detection_summary(summary)
+    
     assert alert is None

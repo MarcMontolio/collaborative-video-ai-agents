@@ -68,7 +68,7 @@ def test_publish_alert_from_detection_summary_publishes_generated_alert() -> Non
     assert dummy_client.stream_name == ALERT_EVENT_STREAM
     assert dummy_client.message is not None
     assert dummy_client.message["event_type"] == "alert.detection.generated"
-    assert "Detected 2 object(s)" in dummy_client.message["payload"]
+    assert "Person detected in frame 1" in dummy_client.message["payload"]
 
 
 def test_publish_alert_from_detection_summary_skips_empty_summary() -> None:
@@ -92,5 +92,30 @@ def test_publish_alert_from_detection_summary_skips_empty_summary() -> None:
 
     message_id = publish_alert_from_detection_summary(dummy_client, summary)
 
+    assert message_id is None
+    assert dummy_client.was_called is False
+
+
+def test_publish_alert_from_detection_summary_skips_summary_without_person() -> None:
+    class DummyRedisClient:
+        def __init__(self) -> None:
+            self.was_called = False
+            
+        def xadd(self, stream_name, message) -> str:
+            self.was_called = True
+            return "1-0"
+        
+    summary = DetectionSummary(
+        frame_index=1,
+        source="dummy.mp4",
+        total_detections=2,
+        detected_classes=["car", "kite"],
+        highest_confidence=0.95,
+    )
+    
+    dummy_client = DummyRedisClient()
+    
+    message_id = publish_alert_from_detection_summary(dummy_client, summary)
+    
     assert message_id is None
     assert dummy_client.was_called is False
