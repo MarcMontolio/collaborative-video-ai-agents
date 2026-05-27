@@ -246,9 +246,9 @@ function disconnectFromDetectionStream() {
       </article>
 
       <article class="card">
-        <h2>Alerts</h2>
+        <h2>Person Alerts</h2>
         <p>
-          Alert events generated from detection summaries will be shown here.
+          Alert events generated from detection summaries will be shown here when a person is detected.
         </p>
 
         <div v-if="alerts.length > 0" class="alert-list">

@@ -16,11 +16,12 @@ class AlertEvent(BaseModel):
 
 
 def create_alert_from_detection_summary(summary: DetectionSummary) -> AlertEvent | None:
-    if summary.total_detections == 0:
+    if "person" not in summary.detected_classes:
         return None
+    
     return AlertEvent(
         severity="info",
-        message=f"Detected {summary.total_detections} object(s)",
+        message=f"Person detected in frame {summary.frame_index}",
         source=summary.source,
         frame_index=summary.frame_index,
         detected_classes=summary.detected_classes,
