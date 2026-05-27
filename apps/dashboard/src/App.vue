@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-import { createDetectionWebSocket } from "./services/detectionWebSocket";
+import { createDashboardWebSocket } from "./services/dashboardWebSocket";
 import type { AlertEvent } from "./types/alert";
 import type { DetectionEvent } from "./types/detection";
 
@@ -11,7 +11,7 @@ const source = ref("0");
 const modelPath = ref("yolo11n.pt");
 const frameStep = ref(5);
 const maxFrames = ref<number | null>(20);
-const websocketBaseUrl = "ws://127.0.0.1:8000/ws/detections";
+const websocketBaseUrl = "ws://127.0.0.1:8000/ws/dashboard";
 
 const websocketUrl = computed(() => {
   const params = new URLSearchParams({
@@ -53,7 +53,7 @@ function connectToDetectionStream() {
 
   connectionStatus.value = "connecting";
 
-  const currentSocket = createDetectionWebSocket(websocketUrl.value, {
+  const currentSocket = createDashboardWebSocket(websocketUrl.value, {
     onOpen: () => {
       if (socket !== currentSocket) {
         return;
@@ -66,7 +66,18 @@ function connectToDetectionStream() {
         return;
       }
 
-      receivedEvents.value = [event, ...receivedEvents.value].slice(0, 10);
+      if (event.type === "detection") {
+        receivedEvents.value = [event.payload, ...receivedEvents.value].slice(
+          0,
+          10,
+        );
+        return;
+      }
+
+      if (event.type === "alert") {
+        alerts.value = [event.payload, ...alerts.value].slice(0, 10);
+        return;
+      }
     },
     onError: () => {
       if (socket !== currentSocket) {
@@ -128,12 +139,12 @@ function disconnectFromDetectionStream() {
 
             <label>
               Frame step
-              <input v-model="frameStep" type="text" />
+              <input v-model.number="frameStep" min="1" type="number" />
             </label>
 
             <label>
               Max frames
-              <input v-model="maxFrames" type="text" />
+              <input v-model.number="maxFrames" min="0" type="number" />
             </label>
           </div>
 
@@ -165,7 +176,7 @@ function disconnectFromDetectionStream() {
                   >{{
                     event.detection_result.detections.length
                   }}
-                  detections(s)</span
+                  detection(s)</span
                 >
               </div>
 
