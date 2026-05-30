@@ -11,6 +11,7 @@ const source = ref("0");
 const modelPath = ref("yolo11n.pt");
 const frameStep = ref(5);
 const maxFrames = ref<number | null>(20);
+const useUnlimitedFrames = ref(false);
 const websocketBaseUrl = "ws://127.0.0.1:8000/ws/dashboard";
 
 const websocketUrl = computed(() => {
@@ -20,7 +21,7 @@ const websocketUrl = computed(() => {
     frame_step: frameStep.value.toString(),
   });
 
-  if (maxFrames.value !== null) {
+  if (!useUnlimitedFrames.value && maxFrames.value !== null) {
     params.set("max_frames", maxFrames.value.toString());
   }
 
@@ -30,9 +31,29 @@ const websocketUrl = computed(() => {
 const connectionStatus = ref<
   "disconnected" | "connecting" | "connected" | "error"
 >("disconnected");
-const receivedEvents = ref<DetectionEvent[]>([]);
 
+const receivedEvents = ref<DetectionEvent[]>([]);
 const alerts = ref<AlertEvent[]>([]);
+
+const totalDetectionEvents = ref(0);
+const totalDetections = ref(0);
+const totalAlerts = ref(0);
+const totalProcessingTime = ref(0);
+const processingTimeSamples = ref(0);
+
+const latestFrameIndex = computed(() =>
+  receivedEvents.value.length > 0
+    ? receivedEvents.value[0].detection_result.frame_index
+    : null,
+);
+
+const averageProcessingTime = computed(() => {
+  if (processingTimeSamples.value === 0) {
+    return null;
+  }
+
+  return totalProcessingTime.value / processingTimeSamples.value;
+});
 
 let socket: WebSocket | null = null;
 
@@ -42,7 +63,11 @@ function connectToDetectionStream() {
     return;
   }
 
-  if (maxFrames.value !== null && maxFrames.value < 0) {
+  if (
+    !useUnlimitedFrames.value &&
+    maxFrames.value !== null &&
+    (!Number.isFinite(maxFrames.value) || maxFrames.value < 0)
+  ) {
     connectionStatus.value = "error";
     return;
   }
@@ -67,6 +92,16 @@ function connectToDetectionStream() {
       }
 
       if (event.type === "detection") {
+        totalDetectionEvents.value += 1;
+        totalDetections.value +=
+          event.payload.detection_result.detections.length;
+
+        if (event.payload.detection_result.processing_time_ms !== null) {
+          totalProcessingTime.value +=
+            event.payload.detection_result.processing_time_ms;
+          processingTimeSamples.value += 1;
+        }
+
         receivedEvents.value = [event.payload, ...receivedEvents.value].slice(
           0,
           10,
@@ -75,8 +110,8 @@ function connectToDetectionStream() {
       }
 
       if (event.type === "alert") {
+        totalAlerts.value += 1;
         alerts.value = [event.payload, ...alerts.value].slice(0, 10);
-        return;
       }
     },
     onError: () => {
@@ -117,6 +152,39 @@ function disconnectFromDetectionStream() {
       </p>
     </section>
 
+    <section class="metrics-grid">
+      <article class="metric-card">
+        <span>Total events</span>
+        <strong>{{ totalDetectionEvents }}</strong>
+      </article>
+
+      <article class="metric-card">
+        <span>Total detections</span>
+        <strong>{{ totalDetections }}</strong>
+      </article>
+
+      <article class="metric-card">
+        <span>Latest frame</span>
+        <strong>{{ latestFrameIndex ?? "none" }}</strong>
+      </article>
+
+      <article class="metric-card">
+        <span>Average processing</span>
+        <strong>
+          {{
+            averageProcessingTime === null
+              ? "unknown"
+              : `${averageProcessingTime.toFixed(2)} ms`
+          }}
+        </strong>
+      </article>
+
+      <article class="metric-card">
+        <span>Person alerts</span>
+        <strong>{{ totalAlerts }}</strong>
+      </article>
+    </section>
+
     <section class="grid">
       <article class="card">
         <h2>Detection Stream</h2>
@@ -144,12 +212,25 @@ function disconnectFromDetectionStream() {
 
             <label>
               Max frames
-              <input v-model.number="maxFrames" min="0" type="number" />
+              <input
+                v-model.number="maxFrames"
+                :disabled="useUnlimitedFrames"
+                min="0"
+                type="number"
+              />
+            </label>
+
+            <label class="checkbox-card">
+              Run mode
+              <span class="checkbox-row">
+                <input v-model="useUnlimitedFrames" type="checkbox" />
+                <span>Run until disconnected</span>
+              </span>
             </label>
           </div>
 
           <div class="websocket-preview">
-            <span>WebSocket URL</span>
+            <span>Generated WebSocket URL</span>
             <code>{{ websocketUrl }}</code>
           </div>
 
@@ -248,7 +329,8 @@ function disconnectFromDetectionStream() {
       <article class="card">
         <h2>Person Alerts</h2>
         <p>
-          Alert events generated from detection summaries will be shown here when a person is detected.
+          Alert events generated from detection summaries will be shown here
+          when a person is detected.
         </p>
 
         <div v-if="alerts.length > 0" class="alert-list">
