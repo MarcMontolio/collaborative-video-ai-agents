@@ -68,7 +68,7 @@ def create_app() -> FastAPI:
         source: str = "0",
         model_path: str = "yolo11n.pt",
         frame_step: int = 5,
-        max_frames: int | None = 20,
+        max_frames: int | None = None,
     ) -> None:
         await websocket.accept()
 
