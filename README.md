@@ -49,7 +49,9 @@ The main objective is to build a functional version first and then progressively
 
 ### Frontend
 
-- React, planned for later milestones
+- Vue 3
+- Vite
+- TypeScript
 
 ### Quality and Tooling
 
@@ -89,7 +91,7 @@ The first implementation starts with a small FastAPI-based foundation and will p
 
 ## Current Project Status
 
-The project currently has a functional local video processing pipeline, a real-time WebSocket streaming API and an initial Redis Streams event-driven pipeline.
+The project currently has a functional local video processing pipeline, a real-time WebSocket streaming API, an initial Redis Streams event-driven pipeline and a Vue dashboard for real-time visualisation.
 
 Implemented:
 
@@ -111,15 +113,22 @@ Implemented:
 - Redis Streams consumer for detection events
 - Detection event coordinator and summary generation
 - Alert event schema and simple alert publisher
+- Unified dashboard WebSocket endpoint for detection and alert events
+- Vue dashboard scaffold
+- Dashboard WebSocket integration
+- Live detection event display
+- Stream controls for source, model path, frame step and max frames
+- Run-until-disconnected stream mode
+- Live stream summary panel
+- Person alert feed connected to backend-generated alert events
+- Basic dashboard metrics
 - Basic automated tests for API, video, detection, streaming, Redis, coordinator and alert components
 
 Planned next:
 
-Planned next:
-
-- Real-time dashboard
 - Tracking and activity recognition agents
 - More advanced alerting rules
+- Annotated video visualization
 - Observability, metrics and structured logging
 
 ## Local Development
@@ -195,7 +204,7 @@ Expected response:
 
 The API gateway exposes a WebSocket endpoint for streaming detection events generated from a local video source or webcam.
 
-The endpoint is intended for local development and debugging before the project introduces a frontend dashboard or a distributed event-driven pipeline.
+The endpoint is intended for local development, debugging and detection-only streaming. The Vue dashboard uses `/ws/dashboard`, which streams both detection and alert messages through a unified WebSocket flow.
 
 ### WebSocket endpoint
 
@@ -245,9 +254,140 @@ Known limitations:
 - Detection runs locally in the API process for the WebSocket endpoint.
 - Only local webcam indexes or local video file paths are supported.
 - Detection events are streamed as JSON, but annotated frames are not streamed.
-- The WebSocket endpoint is separate from the Redis Streams pipeline for now.
+- The detection-only WebSocket endpoint is separate from the Redis Streams pipeline for now.
+- The dashboard uses a unified WebSocket endpoint for local visualisation.
 - Multi-agent orchestration is still limited to local modules and scripts.
 - The WebSocket endpoint does not include authentication or production-grade access control yet.
+
+## Dashboard
+
+The project includes a Vue dashboard for visualising real-time detection events, person alerts, stream status and basic session metrics.
+
+The dashboard connects to the backend through a unified WebSocket endpoint that streams both detection events and generated alert events from a single video processing flow.
+
+### Frontend setup
+
+Install dashboard dependencies:
+
+```powershell
+cd apps\dashboard
+npm install
+```
+
+Build the dashboard:
+
+```powershell
+npm run build
+```
+
+Return to the repository root when needed:
+
+```powershell
+cd ..\..
+```
+
+### Running the dashboard locally
+
+Start the backend API from the repository root:
+
+```powershell
+uvicorn apps.api_gateway.main:app --reload
+```
+
+Start the dashboard in another terminal:
+
+```powershell
+cd apps\dashboard
+npm run dev
+```
+
+The dashboard is served by Vite, usually at:
+
+```text
+http://127.0.0.1:5173
+```
+
+or:
+
+```text
+http://localhost:5173
+```
+
+### Dashboard WebSocket endpoint
+
+The dashboard uses the following backend endpoint:
+
+```text
+ws://127.0.0.1:8000/ws/dashboard
+```
+
+This endpoint streams dashboard messages using a simple envelope format:
+
+```json
+{
+  "type": "detection",
+  "payload": {}
+}
+```
+
+or
+
+```json
+{
+  "type": "alert",
+  "payload": {}
+}
+```
+
+Detection messages update the live detection event list and dashboard metrics.
+
+Alert messages update the person alert feed.
+
+### Stream controls
+
+The dashboard provides controls for:
+
+- `source`: webcam index or local video path. Default: `0`.
+- `model_path`: YOLO model path or model name. Default: `yolo11n.pt`.
+- `frame_step`: process every N frames. Default: `5`.
+- `max_frames`: optional frame limit.
+- `Run until disconnected`: omits `max_frames` and keeps the stream running until the user disconnects, refreshes the page or the source ends.
+
+The generated WebSocket URL is displayed in the dashboard before connecting.
+
+### Dashboard features
+
+The current dashboard includes:
+
+- Live detection event list
+- Detected class and confidence display
+- Source and processing time display
+- Live summary panel
+- Person alert feed
+- Session-level metrics
+- Connect and disconnect actions
+- Run-until-disconnected mode
+
+Current metrics include:
+
+- Total detection events
+- Total detections
+- Latest processed frame
+- Average processing time
+- Person alerts
+
+### Current limitations
+
+The dashboard is intended for local development and portfolio demonstration.
+
+Known limitations:
+
+- The dashboard does not stream annotated video frames yet.
+- Detection runs locally in the backend API process.
+- Browser clients do not connect directly to Redis Streams.
+- Dashboard metrics are session-level and reset when the page reloads.
+- The alert feed currently focuses on person detections.
+- The dashboard does not include authentication or production-grade access control yet.
 
 ## Event-driven Redis Streams pipeline
 
@@ -284,7 +424,7 @@ Redis Stream: alert-events
 
 The detection publishing and detection consuming steps can be run locally with the scripts below.
 
-The coordinator and alert publisher are implemented as shared modules, but the full alert publishing flow is not yet wired into a dedicated runnable worker script.
+The coordinator and alert publisher are implemented as shared modules. The Vue dashboard currently receives backend-generated alerts through `/ws/dashboard`, while the Redis alert stream remains reserved for event-driven worker-based alert publishing.
 
 ### Redis Streams
 
@@ -296,7 +436,7 @@ alert-events
 ```
 
 `detection-events` stores detection events generated from local video processing.
-`alert-events` is reserved for alert events generated from detection summaries. The alert schema and publisher exist in code, but the documented local scripts do not yet run the full detection-summary-to-alert publishing flow.
+`alert-events` is reserved for alert events generated from detection summaries in the Redis-based pipeline. The dashboard currently receives alert events through the backend `/ws/dashboard` endpoint instead of reading Redis Streams directly.
 
 ### Running Redis locally
 
@@ -355,7 +495,8 @@ Known limitations:
 - Redis Streams are used without consumer groups for now.
 - Detection publishing currently runs from a local script.
 - The consumer worker is a local debugging worker, not a long-running production service.
-- Alert generation currently uses a simple rule based on detection summaries.- Advanced alert rules, tracking and activity recognition are not implemented yet.
+- Alert generation currently uses a simple person-detection rule based on detection summaries.
+- Advanced alert rules, tracking and activity recognition are not implemented yet.
 - Alert schemas and publishing helpers exist, but alert publishing is not yet wired into a runnable worker script.
 - Backpressure, retries and dead-letter handling are not implemented yet.
 
@@ -371,6 +512,14 @@ Run linting:
 
 ```powershell
 ruff check .
+```
+
+Run dashboard build:
+
+```powershell
+cd apps\dashboard
+npm run build
+cd ..\..
 ```
 
 ## Roadmap
@@ -416,10 +565,14 @@ ruff check .
 
 ### Milestone 5: Dashboard and real-time visualisation
 
-- React dashboard
-- Detection display
-- Alert feed
-- Stream status panel
+- Vue dashboard
+- Unified dashboard WebSocket integration
+- Live detection display
+- Person alert feed
+- Stream controls
+- Live summary panel
+- Basic dashboard metrics
+- Dashboard usage documentation
 
 ### Milestone 6: Observability, scaling and production readiness
 
@@ -434,6 +587,7 @@ ruff check .
 ```text
 apps/
   api_gateway/
+  dashboard/
 packages/
   shared/
     alerts/
@@ -448,7 +602,7 @@ docs/
 scripts/
 ```
 
-`apps/` contains application services.
+`apps/` contains application services, including the FastAPI API gateway and the Vue dashboard.
 
 `packages/shared/` contains reusable shared code.
 
