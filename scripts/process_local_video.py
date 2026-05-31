@@ -36,14 +36,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         default="yolo11n.pt",
-        help="YOLO model path or model name.",
+        help="YOLO model path or model name. Defaults to 'yolo11n.pt'",
     )
 
     parser.add_argument(
         "--frame-step",
         type=int,
         default=1,
-        help="Run detection every N frames.",
+        help="Run detection every N frames. Defaults to 1",
     )
 
     parser.add_argument(
@@ -58,6 +58,13 @@ def parse_args() -> argparse.Namespace:
         help="Directory where annotated frames are saved",
     )
 
+    parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.5,
+        help="Minimum confidence required to draw a detection. Defaults to 0.5",
+    )
+
     return parser.parse_args()
 
 
@@ -70,7 +77,11 @@ def main() -> None:
     if args.frame_step < 1:
         raise ValueError("--frame-step must be greater than or equal to 1")
 
+    if not 0 <= args.confidence_threshold <= 1:
+        raise ValueError("--confidence-threshold must be between 0 and 1")
+
     source = parse_video_source(args.source)
+    confidence_threshold = args.confidence_threshold
 
     video = LocalVideoCapture(source)
     detector = YoloDetector(model_path=args.model)
@@ -102,8 +113,12 @@ def main() -> None:
 
             detection_result = detector.detect(frame, frame_index=processed_frames)
 
-            if args.save_frames is True:
-                annotated_frame = draw_detections(frame, detection_result)
+            if args.save_frames:
+                annotated_frame = draw_detections(
+                    frame,
+                    detection_result,
+                    confidence_threshold=confidence_threshold,
+                )
 
                 filename = f"frame_{processed_frames:06d}.jpg"
                 output_path = f"{output_dir}/{filename}"
@@ -111,13 +126,19 @@ def main() -> None:
 
             detection_frames += 1
 
+            visible_detections = [
+                detection
+                for detection in detection_result.detections
+                if detection.confidence >= confidence_threshold
+            ]
+
             print(
                 f"Processed frame {processed_frames}: "
-                f"detections={len(detection_result.detections)} "
-                f"processing_time_ms={detection_result.processing_time_ms:.2f}"
+                f"Detections={len(visible_detections)} "
+                f"Processing_time_ms={detection_result.processing_time_ms:.2f}"
             )
 
-            for detection in detection_result.detections:
+            for detection in visible_detections:
                 print(
                     f"  - {detection.class_name} confidence={detection.confidence:.2f}"
                 )
