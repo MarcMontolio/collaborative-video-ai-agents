@@ -13,6 +13,10 @@ const frameStep = ref(5);
 const maxFrames = ref<number | null>(20);
 const useUnlimitedFrames = ref(false);
 const websocketBaseUrl = "ws://127.0.0.1:8000/ws/dashboard";
+const annotatedStreamBaseUrl = "http://127.0.0.1:8000/stream/annotated";
+const isVisualStreamActive = ref(false);
+const activeAnnotatedStreamUrl = ref<string | null>(null)
+const visualStreamConfidenceThreshold = ref(0.5);
 
 const websocketUrl = computed(() => {
   const params = new URLSearchParams({
@@ -26,6 +30,21 @@ const websocketUrl = computed(() => {
   }
 
   return `${websocketBaseUrl}?${params.toString()}`;
+});
+
+const annotatedStreamUrl = computed(() => {
+  const params = new URLSearchParams({
+    source: source.value,
+    model_path: modelPath.value,
+    frame_step: frameStep.value.toString(),
+    confidence_threshold: visualStreamConfidenceThreshold.value.toString(),
+  });
+
+  if (!useUnlimitedFrames.value && maxFrames.value !== null) {
+    params.set("max_frames", maxFrames.value.toString());
+  }
+
+  return `${annotatedStreamBaseUrl}?${params.toString()}`;
 });
 
 const connectionStatus = ref<
@@ -77,6 +96,8 @@ function connectToDetectionStream() {
   }
 
   connectionStatus.value = "connecting";
+
+  isVisualStreamActive.value = false;
 
   const currentSocket = createDashboardWebSocket(websocketUrl.value, {
     onOpen: () => {
@@ -139,6 +160,40 @@ function disconnectFromDetectionStream() {
   socket = null;
   connectionStatus.value = "disconnected";
 }
+
+function startVisualStream() {
+  if (frameStep.value < 1) {
+    connectionStatus.value = "error";
+    return;
+  }
+
+  if (
+    !useUnlimitedFrames.value &&
+    maxFrames.value !== null &&
+    (!Number.isFinite(maxFrames.value) || maxFrames.value < 0)
+  ) {
+    connectionStatus.value = "error";
+    return;
+  }
+
+  if (
+    !Number.isFinite(visualStreamConfidenceThreshold.value) ||
+    visualStreamConfidenceThreshold.value < 0 ||
+    visualStreamConfidenceThreshold.value > 1
+  ) {
+    connectionStatus.value = "error";
+    return;
+  }
+
+  disconnectFromDetectionStream();
+  activeAnnotatedStreamUrl.value = annotatedStreamUrl.value
+  isVisualStreamActive.value = true;
+}
+
+function stopVisualStream() {
+  isVisualStreamActive.value = false;
+  activeAnnotatedStreamUrl.value = null
+}
 </script>
 
 <template>
@@ -186,6 +241,58 @@ function disconnectFromDetectionStream() {
     </section>
 
     <section class="grid">
+      <article class="card visual-stream-card">
+        <h2>Annotated Stream</h2>
+        <p>
+          Display the backend MJPEG stream with YOLO bounding boxes and
+          confidence labels
+        </p>
+
+        <div class="visual-stream-controls">
+          <label>
+            Confidence threshold
+            <input
+              v-model.number="visualStreamConfidenceThreshold"
+              max="1"
+              min="0"
+              step="0.05"
+              type="number"
+            />
+          </label>
+
+          <div class="actions">
+            <button type="button" @click="startVisualStream">
+              Start visual stream
+            </button>
+            <button type="button" @click="stopVisualStream">
+              Stop visual stream
+            </button>
+          </div>
+        </div>
+        <div class="websocket-preview">
+          <span>Generated annotated stream URL</span>
+          <code>{{ annotatedStreamUrl }}</code>
+        </div>
+
+        <div v-if="isVisualStreamActive" class="visual-stream-frame">
+          <img
+            v-if="activeAnnotatedStreamUrl !== null"
+            :src="activeAnnotatedStreamUrl"
+            alt="Annotated inference stream"
+          />
+        </div>
+
+        <p v-else="empty - state">Visual stream is stopped</p>
+
+        <p class="event-meta">
+          Visual stream and event stream are run separately to avoid opening the
+          same webcam source twice.
+        </p>
+        <p class="event-meta">
+          Changes to stream controls are applied the next time the visual stream is
+          started.
+        </p>
+      </article>
       <article class="card">
         <h2>Detection Stream</h2>
         <p>
