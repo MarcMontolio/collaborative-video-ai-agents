@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import Iterator
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 
 from packages.shared.alerts.schemas import create_alert_from_detection_summary
@@ -126,13 +126,16 @@ def create_app() -> FastAPI:
     ) -> StreamingResponse:
         video_source = int(source) if source.isdigit() else source
 
-        frame_iterator = stream_annotated_frames(
-            source=video_source,
-            model_path=model_path,
-            frame_step=frame_step,
-            max_frames=max_frames,
-            confidence_threshold=confidence_threshold,
-        )
+        try:
+            frame_iterator = stream_annotated_frames(
+                source=video_source,
+                model_path=model_path,
+                frame_step=frame_step,
+                max_frames=max_frames,
+                confidence_threshold=confidence_threshold,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         return StreamingResponse(
             build_mjpeg_response(frame_iterator),

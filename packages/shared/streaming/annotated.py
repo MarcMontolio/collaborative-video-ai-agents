@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 
 import cv2
+from cv2.typing import MatLike
 
 from packages.shared.detection.yolo import YoloDetector
 from packages.shared.video.annotation import draw_detections
@@ -23,20 +24,52 @@ def stream_annotated_frames(
     if not 0 <= confidence_threshold <= 1:
         raise ValueError("--confidence-threshold must be between 0 and 1")
 
+    if max_frames == 0:
+        return iter(())
+
     video = LocalVideoCapture(source)
+    detector = YoloDetector(model_path)
+
+    success, first_frame = video.read_frame()
+
+    if not success:
+        video.release()
+        raise ValueError("Could not read from video source")
+
+    return _iter_annotated_frames(
+        video=video,
+        detector=detector,
+        first_frame=first_frame,
+        frame_step=frame_step,
+        max_frames=max_frames,
+        confidence_threshold=confidence_threshold,
+    )
+
+
+def _iter_annotated_frames(
+    video: LocalVideoCapture,
+    detector: YoloDetector,
+    first_frame: MatLike,
+    frame_step: int,
+    max_frames: int | None,
+    confidence_threshold: float,
+) -> Iterator[bytes]:
+    processed_frames = 0
+    pending_frame: MatLike | None = first_frame
 
     try:
-        detector = YoloDetector(model_path)
-        processed_frames = 0
-
         while True:
             if max_frames is not None and processed_frames >= max_frames:
                 break
 
-            success, frame = video.read_frame()
+            if pending_frame is None:
+                success, frame = video.read_frame()
 
-            if not success:
-                break
+                if not success:
+                    break
+            else:
+                frame = pending_frame
+                pending_frame = None
 
             processed_frames += 1
 
