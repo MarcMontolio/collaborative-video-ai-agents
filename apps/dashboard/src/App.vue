@@ -15,6 +15,7 @@ const useUnlimitedFrames = ref(false);
 const websocketBaseUrl = "ws://127.0.0.1:8000/ws/dashboard";
 const annotatedStreamBaseUrl = "http://127.0.0.1:8000/stream/annotated";
 const isVisualStreamActive = ref(false);
+const activeAnnotatedStreamUrl = ref<string | null>(null)
 const visualStreamConfidenceThreshold = ref(0.5);
 
 const websocketUrl = computed(() => {
@@ -185,11 +186,13 @@ function startVisualStream() {
   }
 
   disconnectFromDetectionStream();
+  activeAnnotatedStreamUrl.value = annotatedStreamUrl.value
   isVisualStreamActive.value = true;
 }
 
 function stopVisualStream() {
   isVisualStreamActive.value = false;
+  activeAnnotatedStreamUrl.value = null
 }
 </script>
 
@@ -272,7 +275,11 @@ function stopVisualStream() {
         </div>
 
         <div v-if="isVisualStreamActive" class="visual-stream-frame">
-          <img :src="annotatedStreamUrl" alt="Annotated inference stream" />
+          <img
+            v-if="activeAnnotatedStreamUrl !== null"
+            :src="activeAnnotatedStreamUrl"
+            alt="Annotated inference stream"
+          />
         </div>
 
         <p v-else="empty - state">Visual stream is stopped</p>
@@ -280,6 +287,10 @@ function stopVisualStream() {
         <p class="event-meta">
           Visual stream and event stream are run separately to avoid opening the
           same webcam source twice.
+        </p>
+        <p class="event-meta">
+          Changes to stream controls are applied the next time the visual stream is
+          started.
         </p>
       </article>
       <article class="card">
