@@ -1,10 +1,13 @@
 import asyncio
+from collections.abc import Iterator
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 
 from packages.shared.alerts.schemas import create_alert_from_detection_summary
 from packages.shared.config import get_settings
 from packages.shared.coordinator.detection import summarise_detection_event
+from packages.shared.streaming.annotated import stream_annotated_frames
 from packages.shared.streaming.local import stream_local_detections
 
 
@@ -13,6 +16,11 @@ def get_next_stream_event(iterator):
         return next(iterator)
     except StopIteration:
         return None
+
+
+def build_mjpeg_response(frame_iterator: Iterator[bytes]) -> Iterator[bytes]:
+    for frame in frame_iterator:
+        yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
 
 
 def create_app() -> FastAPI:
@@ -107,6 +115,32 @@ def create_app() -> FastAPI:
             await websocket.close()
         except WebSocketDisconnect:
             pass
+
+    @app.get("/stream/annotated")
+    def annotated_stream(
+        source: str = "0",
+        model_path: str = "yolo11n.pt",
+        frame_step: int = 5,
+        max_frames: int | None = None,
+        confidence_threshold: float = 0.5,
+    ) -> StreamingResponse:
+        video_source = int(source) if source.isdigit() else source
+
+        try:
+            frame_iterator = stream_annotated_frames(
+                source=video_source,
+                model_path=model_path,
+                frame_step=frame_step,
+                max_frames=max_frames,
+                confidence_threshold=confidence_threshold,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        return StreamingResponse(
+            build_mjpeg_response(frame_iterator),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+        )
 
     return app
 

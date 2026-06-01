@@ -7,10 +7,14 @@ from packages.shared.detection.schemas import FrameDetectionResult
 def draw_detections(
     frame: MatLike,
     detection_result: FrameDetectionResult,
+    confidence_threshold: float = 0.0,
 ) -> MatLike:
     annotated_frame = frame.copy()
 
     for detection in detection_result.detections:
+        if detection.confidence < confidence_threshold:
+            continue
+
         box = detection.bounding_box
 
         x1 = int(box.x1)
