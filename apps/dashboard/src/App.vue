@@ -76,6 +76,12 @@ const averageProcessingTime = computed(() => {
 
 const isEventStreamActive = ref(false);
 
+const canDisconnectEventStream = computed(
+  () =>
+    connectionStatus.value === "connecting" ||
+    connectionStatus.value === "connected",
+);
+
 let socket: WebSocket | null = null;
 
 function connectToDetectionStream() {
@@ -361,7 +367,7 @@ function stopVisualStream() {
 
           <div class="actions">
             <button
-              v-if="!isEventStreamActive"
+              v-if="!canDisconnectEventStream"
               type="button"
               @click="connectToDetectionStream"
             >
