@@ -15,7 +15,7 @@ const useUnlimitedFrames = ref(false);
 const websocketBaseUrl = "ws://127.0.0.1:8000/ws/dashboard";
 const annotatedStreamBaseUrl = "http://127.0.0.1:8000/stream/annotated";
 const isVisualStreamActive = ref(false);
-const activeAnnotatedStreamUrl = ref<string | null>(null)
+const activeAnnotatedStreamUrl = ref<string | null>(null);
 const visualStreamConfidenceThreshold = ref(0.5);
 
 const websocketUrl = computed(() => {
@@ -74,6 +74,14 @@ const averageProcessingTime = computed(() => {
   return totalProcessingTime.value / processingTimeSamples.value;
 });
 
+const isEventStreamActive = ref(false);
+
+const canDisconnectEventStream = computed(
+  () =>
+    connectionStatus.value === "connecting" ||
+    connectionStatus.value === "connected",
+);
+
 let socket: WebSocket | null = null;
 
 function connectToDetectionStream() {
@@ -98,6 +106,7 @@ function connectToDetectionStream() {
   connectionStatus.value = "connecting";
 
   isVisualStreamActive.value = false;
+  activeAnnotatedStreamUrl.value = null;
 
   const currentSocket = createDashboardWebSocket(websocketUrl.value, {
     onOpen: () => {
@@ -106,6 +115,7 @@ function connectToDetectionStream() {
       }
 
       connectionStatus.value = "connected";
+      isEventStreamActive.value = true;
     },
     onMessage: (event) => {
       if (socket !== currentSocket) {
@@ -141,6 +151,7 @@ function connectToDetectionStream() {
       }
 
       connectionStatus.value = "error";
+      isEventStreamActive.value = false;
     },
     onClose: () => {
       if (socket !== currentSocket) {
@@ -149,6 +160,7 @@ function connectToDetectionStream() {
 
       connectionStatus.value = "disconnected";
       socket = null;
+      isEventStreamActive.value = false;
     },
   });
 
@@ -158,6 +170,7 @@ function connectToDetectionStream() {
 function disconnectFromDetectionStream() {
   socket?.close();
   socket = null;
+  isEventStreamActive.value = false;
   connectionStatus.value = "disconnected";
 }
 
@@ -186,13 +199,13 @@ function startVisualStream() {
   }
 
   disconnectFromDetectionStream();
-  activeAnnotatedStreamUrl.value = annotatedStreamUrl.value
+  activeAnnotatedStreamUrl.value = annotatedStreamUrl.value;
   isVisualStreamActive.value = true;
 }
 
 function stopVisualStream() {
+  activeAnnotatedStreamUrl.value = null;
   isVisualStreamActive.value = false;
-  activeAnnotatedStreamUrl.value = null
 }
 </script>
 
@@ -245,7 +258,11 @@ function stopVisualStream() {
         <h2>Annotated Stream</h2>
         <p>
           Display the backend MJPEG stream with YOLO bounding boxes and
-          confidence labels
+          confidence labels.
+        </p>
+        <p>
+          Visual stream status:
+          {{ isVisualStreamActive ? "active" : "stopped" }}
         </p>
 
         <div class="visual-stream-controls">
@@ -261,10 +278,14 @@ function stopVisualStream() {
           </label>
 
           <div class="actions">
-            <button type="button" @click="startVisualStream">
+            <button
+              v-if="!isVisualStreamActive"
+              type="button"
+              @click="startVisualStream"
+            >
               Start visual stream
             </button>
-            <button type="button" @click="stopVisualStream">
+            <button v-else type="button" @click="stopVisualStream">
               Stop visual stream
             </button>
           </div>
@@ -274,23 +295,31 @@ function stopVisualStream() {
           <code>{{ annotatedStreamUrl }}</code>
         </div>
 
-        <div v-if="isVisualStreamActive" class="visual-stream-frame">
+        <div v-if="activeAnnotatedStreamUrl !== null" class="websocket-preview">
+          <span>Active annotated stream URL</span>
+          <code>{{ activeAnnotatedStreamUrl }}</code>
+        </div>
+
+        <div
+          v-if="isVisualStreamActive && activeAnnotatedStreamUrl !== null"
+          class="visual-stream-frame"
+        >
           <img
-            v-if="activeAnnotatedStreamUrl !== null"
+            :key="activeAnnotatedStreamUrl"
             :src="activeAnnotatedStreamUrl"
             alt="Annotated inference stream"
           />
         </div>
 
-        <p v-else="empty - state">Visual stream is stopped</p>
+        <p v-else class="empty-state">Visual stream is stopped.</p>
 
         <p class="event-meta">
           Visual stream and event stream are run separately to avoid opening the
           same webcam source twice.
         </p>
         <p class="event-meta">
-          Changes to stream controls are applied the next time the visual stream is
-          started.
+          Changes to stream controls are applied the next time the visual stream
+          is started.
         </p>
       </article>
       <article class="card">
@@ -336,16 +365,15 @@ function stopVisualStream() {
             </label>
           </div>
 
-          <div class="websocket-preview">
-            <span>Generated WebSocket URL</span>
-            <code>{{ websocketUrl }}</code>
-          </div>
-
           <div class="actions">
-            <button type="button" @click="connectToDetectionStream">
+            <button
+              v-if="!canDisconnectEventStream"
+              type="button"
+              @click="connectToDetectionStream"
+            >
               Connect
             </button>
-            <button type="button" @click="disconnectFromDetectionStream">
+            <button v-else type="button" @click="disconnectFromDetectionStream">
               Disconnect
             </button>
           </div>
